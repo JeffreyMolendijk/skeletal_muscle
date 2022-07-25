@@ -1,0 +1,662 @@
+---
+title: "HMDP analysis"
+author: "Jeffrey Molendijk"
+date: "21/06/2022"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+## Setup
+
+### Loading packages, functions & themes
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# Load packages required to run the analysis
+library(ggplot2)
+library(tidyr)
+library(patchwork)
+library(ggtext)
+library(dplyr)
+library(circlize)
+
+library(WGCNA)
+library(PCAtools)
+library(clusterProfiler)
+library(ReactomePA)
+library(imputeLCMD)
+library(rtracklayer)
+library(GenomicRanges)
+library(Gviz)
+library(data.table)
+
+source("functions.R")
+source("themes.R")
+```
+
+
+## Read input data
+
+### Read trait data
+
+```{r read trait data}
+phenomeasure <- readRDS(file = "../data/input/phenomeasure2022.RDS")
+```
+
+
+### Read proteomics data
+
+```{r read protein data}
+# Read the protein data
+prot_m <- read.delim(file = "../data/input/181117_Lumos_BenP_HMDP_Muscle_TMT_Proteins_mapped.txt") %>% 
+  filter(Master == "IsMasterProtein") %>% 
+  dplyr::select(Accession, Gene.Name, BXD21.TyJ_167:NZB.BINJ_74)
+
+# Keep proteins measured in at least 50 mice
+prot_m <-prot_m[(is.na(prot_m) %>% apply(., 1, sum)) < (ncol(prot_m) -52), ]
+
+# Save list of protein-gene names for mapping purposes
+proteinlist <- prot_m %>% dplyr::select(Accession, Gene.Name) %>% distinct()
+
+# Convert protein data to matrix, and pre-process
+prot_m <- prot_m %>% 
+  dplyr::select(-Accession, -Gene.Name) %>% as.matrix() %>% 
+  limma::normalizeQuantiles(.) %>% t %>% `colnames<-`(prot_m$Accession) %>% 
+  `rownames<-`(colnames(prot_m %>% dplyr::select(-Accession, -Gene.Name)))
+
+prot_m[is.na(prot_m)] <- 0
+```
+
+
+```{r correlation muscleprot}
+# Create proteomic data summarized by mouse strain
+prot_cor <- prot_m %>% as.data.frame %>% 
+  mutate(strain = sub("_.*","", rownames(prot_m))) %>% 
+  dplyr::select(strain, everything()) %>% 
+  filter(strain %in% rownames(phenomeasure)) %>% group_by(strain) %>% 
+  summarise_all(.funs = "mean", na.rm = TRUE) %>% as.data.frame() %>% `rownames<-`(.$strain) 
+
+colnames(prot_cor) <- c("strain", proteinlist %>% mutate(names = paste0(Gene.Name, "_", Accession, sep = "")) %>% .$names)
+
+# Create protein-protein correlation object for plotting
+cor <- WGCNA::bicorAndPvalue(prot_cor[,2:ncol(prot_cor)], use = "pairwise.complete.obs")
+names(cor)[1] <- "cor"
+
+cor <- bind_cols(cor$cor %>% reshape2::melt() %>% as.data.table() %>% `colnames<-`(., c("p1", "p2", "cor")), cor$p %>% reshape2::melt() %>% as.data.table() %>% `colnames<-`(., c("p1", "p2", "pval")) %>% dplyr::select(pval)) %>% mutate(min = pmin(as.character(p1), as.character(p2))) %>% filter(p1 == min) %>% select(-min) %>% filter(p1 != p2) %>% mutate(qval = p.adjust(p = .$pval, method = "BH")) %>% filter(abs(cor) > 0.3)
+
+# Export protein-protein correlations for MuscleProt
+# saveRDS(cor, file = "../data/export/ppcor.RDS")
+
+# Create protein-trait correlation object for plotting
+cor <- WGCNA::bicorAndPvalue(prot_cor[,2:ncol(prot_cor)], phenomeasure, use = "pairwise.complete.obs")
+names(cor)[1] <- "cor"
+
+cor <- bind_cols(cor$cor %>% reshape2::melt() %>% as.data.table() %>% `colnames<-`(., c("p1", "p2", "cor")), cor$p %>% reshape2::melt() %>% as.data.table() %>% `colnames<-`(., c("p1", "p2", "pval")) %>% dplyr::select(pval)) %>% mutate(qval = p.adjust(p = .$pval, method = "BH"))  %>% filter(abs(cor) > 0.3)
+
+# Export protein-trait correlations for MuscleProt
+# saveRDS(cor, file = "../data/export/ptcor.RDS")
+```
+
+
+
+### Read QTL data
+
+```{r read qtl data, echo=TRUE, warning=FALSE, error=FALSE, message=FALSE}
+# Load traitgwas data from `traitdata2022.RDS`
+traitgwas <- readRDS(file = "../data/input/traitdata2022.RDS") %>% mutate(CHR = sub("20", "X", .$CHR)) %>% mutate(trait_name = paste(trait_name, study, sep = "_"))
+
+# pQTL data is contained in two separate files, to comply with GitHub upload limits
+# Data from both files is combined before further analyses
+pqtl_m_1 <- readRDS(file = "../data/input/pqtl_m_1.RDS") %>% filter(!is.na(snp_chr) & !is.na(p_chromosome_name))
+pqtl_m_2 <- readRDS(file = "../data/input/pqtl_m_2.RDS") %>% filter(!is.na(snp_chr) & !is.na(p_chromosome_name))
+pqtl_m_3 <- readRDS(file = "../data/input/pqtl_m_3.RDS") %>% filter(!is.na(snp_chr) & !is.na(p_chromosome_name))
+
+pqtl_m <- do.call(rbind, list(pqtl_m_1, pqtl_m_2, pqtl_m_3))
+
+pqtl_m <- pqtl_m %>% mutate(proxy = case_when(((snp_bp_abs > p_start_position_abs - 10000000) & (snp_bp_abs < p_end_position_abs + 10000000))  ~ "cis", TRUE ~ "trans"))
+
+rm(list = c("pqtl_m_1", "pqtl_m_2", "pqtl_m_3"))
+
+# Export pQTL data for muscleprot
+# pqtl_m %>% filter(pvalue < 1e-3) %>% filter(!is.na(gene_symbol) & !is.na(accession)) %>% mutate(gene_symbol = paste0(gene_symbol, "_", accession, sep = "")) %>% select(rsID, snp_bp_abs, gene_symbol, VE, pvalue, proxy) %>% saveRDS(., file = "../data/export/muscleprot_pqtl.RDS")
+
+traitgwas %>% filter(P < 1e-2) %>% filter(!is.na(trait_name) & !is.na(study)) %>% saveRDS(., file = "../data/export/muscleprot_tqtl.RDS")
+
+trait_list <- rbind(
+readxl::read_excel(path = "../data/input/HMDP Traits List.xlsx", sheet = 1) %>% mutate(study = "pmid20054062"),
+readxl::read_excel(path = "../data/input/HMDP Traits List.xlsx", sheet = 2) %>% mutate(study = "pmid25480693"),
+readxl::read_excel(path = "../data/input/HMDP Traits List.xlsx", sheet = 3) %>% mutate(study = "pmid25651185"),
+readxl::read_excel(path = "../data/input/HMDP Traits List.xlsx", sheet = 4) %>% mutate(study = "pmid26694027")) %>% select(-trait_id, -trait_category) %>% mutate(trait_name = paste0(trait_name, "_", study, sep = "")) %>% distinct()
+
+# Export table for supplementary (containing all traitnames)
+rbind(data.frame(trait_name = colnames(phenomeasure)) %>% left_join(., trait_list %>% select(-study), by = "trait_name") %>% mutate(study = sub(".*_", "", trait_name)), traitgwas %>% select(trait_name, study) %>% distinct() %>% left_join(., trait_list %>% select(-study), by = "trait_name")) %>% distinct %>% write.csv(., file = "../data/export/Table_S4.csv", row.names = FALSE)
+
+traitgwas %>% filter(P < 1e-6) %>% left_join(., trait_list %>% select(-study), by = "trait_name") %>% mutate(trait_name = sub("_.*", "", trait_name)) %>% write.csv(., file = "../data/export/Table_S5.csv", row.names = FALSE)
+```
+
+
+### Read Gentype data
+
+```{r databases}
+# Read gentype data from `gentype.RDS`
+gentype <- readRDS("../data/input/gentype.RDS")
+```
+
+
+### Additional data
+
+```{r additional data}
+# Read existing target data (for AAV screening)
+screen_targets <- readxl::read_xlsx(path = "../data/input/AAV6_splashRNA_HMDP_pQTLs 25-2-2020_V2.xlsx", skip = 21) %>% dplyr::select(2) %>% `colnames<-`("targets") %>% mutate(targets = sub("_.*", "", .$targets)) %>% distinct() %>% add_row(targets = "UFM1") %>% add_row(targets = "UFSP2") %>% add_row(targets = "ENOPH1") %>% add_row(targets = "XDH") %>% add_row(targets = "ASRGL1") %>% add_row(targets = "ACADL")  %>% add_row(targets = "PRKN")
+
+# http://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/
+mm10_chrsize <- read.delim(file = "../data/input/male.mm10.chrom.sizes.tsv", header = FALSE) %>% mutate(V3 = c(0, cumsum(as.numeric(.$V2))[1:nrow(.)-1])) %>% mutate(chromosome = sub("chr", "", .$V1))
+
+
+snploc <- rbind(read.csv(file = "../data/database/SNP_locations_trait_05.csv", na.strings = ""), read.csv(file = "../data/database/SNP_locations_pqtl.csv", na.strings = ""))
+snploc <- snploc %>% dplyr::select(refsnp_id, chrom_start, chr_name, everything())
+snploc[["chr_name"]] <- factor(snploc[["chr_name"]], levels=c(1:22,"X","Y","MT")) %>% droplevels()
+snploc <- left_join(snploc, read.csv(file = "../data/database/variant_effect_impact.csv") %>% dplyr::select(SO.term, Display.term, CP_Variant_Impact), by = c("consequence_type_tv" = "SO.term"))
+
+# Add this info to the initial dataset
+snploc <- left_join(snploc, mm10_chrsize %>% dplyr::select(chromosome, V3) %>% `colnames<-`(c("chr_name", "tot"))) %>% arrange(chr_name, chrom_start) %>% mutate(chrom_start = (chrom_start+tot)) %>% ungroup() %>% dplyr::select(-tot)
+snploc[["chr_name"]] <- factor(snploc[["chr_name"]], levels=c(1:22,"X","Y","MT")) %>% droplevels()
+```
+
+## Generate Figures
+
+### Figure 1G
+
+```{r export circlize Mocs2}
+qtldata <- pqtl_m %>% filter((proxy == "cis" & pvalue < 1e-4) | (proxy == "trans" & pvalue < 5e-8)) %>% 
+  as.data.frame() %>% 
+  dplyr::select(rsID, snp_bp_abs, snp_chr, gene_symbol, p_start_position_abs, p_end_position_abs, p_chromosome_name, pvalue, proxy) %>% 
+  mutate(snp_chr = sub("chr", "" , snp_chr), p_chromosome_name = sub("chr", "" , p_chromosome_name))
+
+cp_circos <- cp_circos_create(qtldata, c("Mocs2", "Atp5f1a", "Atp5c1", "Atp5pb", "Atp5f1d", "Atp5f1b", "Atp5pd", "Atp5s", "Atp5mc2", "Atp5pf"), 'pval')
+
+svglite::svglite("../data/export/images/F1G_Circos_MOCS2_ATP.svg", width = 6, height = 6)
+cp_circos_plot(cp_circos)
+dev.off()
+```
+
+### Figure S1
+
+```{r dendrogram protein}
+# Circlize protein sample dendrogram
+dd <- dist(scale(prot_m), method = "euclidean")
+dd <- dist((prot_m), method = "euclidean")
+hc <- hclust(dd, method = "ward.D2")
+
+# Code to create dendrogram from:
+# http://jokergoo.github.io/circlize/reference/circos.dendrogram.html
+
+labels = hc$labels  # name of birds
+ct = cutree(hc, 6)  # cut tree into 6 pieces
+n = length(labels)  # number of bird species
+dend = as.dendrogram(hc)
+
+svglite::svglite(file = "../data/export/images/SF1_dendrogram_protein.svg", width = 8, height = 8)
+circos.par(cell.padding = c(0, 0, 0, 0))
+circos.initialize(factors = "a", xlim = c(0, n)) # only one sector
+max_height = attr(dend, "height")  # maximum height of the trees
+circos.trackPlotRegion(ylim = c(0, 1), bg.border = NA, track.height = 0.3,
+    panel.fun = function(x, y) {
+        for(i in seq_len(n)) {
+            circos.text(i-0.5, 0, labels[i], adj = c(0, 0.5),
+                facing = "clockwise", niceFacing = TRUE,
+                col = ct[labels[i]], cex = 0.4)
+        }
+})
+
+suppressPackageStartupMessages(require(dendextend))
+dend = color_branches(dend, k = 6, col = 1:6)
+
+circos.trackPlotRegion(ylim = c(0, max_height), bg.border = NA,
+    track.height = 0.4, panel.fun = function(x, y) {
+        circos.dendrogram(dend, max_height = max_height)
+})
+dev.off()
+
+rm(list = c("dd", "hc", "labels", "ct", "n", "dend"))
+```
+
+
+### CV plot (Figure 1C)
+
+```{r cv}
+# Generate protein CV plot
+prot_cv <- 2^prot_m %>% t 
+
+# Calculate CV per protein/strain and per protein
+prot_cv <- prot_cv %>% as.data.frame() %>% 
+  mutate(protein = rownames(.)) %>% 
+  pivot_longer(., cols = c(BXD21.TyJ_167:NZB.BINJ_74)) %>% `colnames<-`(c("protein","sample", "value")) %>% 
+  mutate(strain = sub("_.*","",.$sample)) %>% group_by(protein, strain) %>% 
+  mutate(straincv = ((sd(value) / mean(value)) * 100)) %>% ungroup() %>% 
+  group_by(protein) %>% mutate(allcv = ((sd(value) / mean(value)) * 100)) %>% 
+  dplyr::select(protein, straincv, allcv) %>% 
+  summarize('intra-strain' = mean(straincv, na.rm = TRUE), 'inter-strain' = mean(allcv, na.rm = TRUE))
+
+svglite::svglite(filename = "../data/export/images/F1C_protein_cv.svg", width = 5, height = 4)
+ggplot(prot_cv %>% pivot_longer(., cols = c('intra-strain', 'inter-strain')) %>% mutate(name = factor(name, levels = c("intra-strain", "inter-strain"))), aes(x = name, y = value)) + geom_violin(col = "#0000FF60") + geom_boxplot(outlier.alpha = 0, width = 0.2) + theme_bw() + labs(x = "", y = "Coefficient of variation (%)", subtitle = "Coefficient of variation (%)") + ggpubr::stat_compare_means()
+dev.off()
+```
+
+
+### RPL correlation (Figure 1F)
+
+```{r rpl figure 1}
+# Protein scatterplot for Figure 1
+scatterplot_Rpl <- prot_m %>% as.data.frame() %>% dplyr::select(proteinlist %>% filter(Gene.Name == "Rpl7") %>% 
+                                                                  dplyr::select(Accession) %>% unlist() %>% unname,
+                  proteinlist %>% filter(Gene.Name == "Rpl19") %>% dplyr::select(Accession) %>% unlist() %>% unname,
+                  proteinlist %>% filter(Gene.Name == "Rpl23") %>% dplyr::select(Accession) %>% unlist() %>% unname) %>% 
+  `colnames<-`(c("Rpl7", "Rpl19", "Rpl23"))
+
+p1 <- ggplot(scatterplot_Rpl, aes(x = Rpl7, y = Rpl19)) + geom_ribbon(stat='smooth', method = "lm", se=TRUE, alpha=0.1, span = 0.7, fill = "#92278F") + geom_line(stat='smooth', method = "lm", alpha=0.1, span = 0.7, col = "#92278F") + geom_point(col = "#92278F", size = 1, alpha = 0.8) + theme_panel + theme(panel.border = element_rect(colour = "black", fill = NA), axis.line.x = element_blank(), axis.line.y = element_blank()) + 
+  annotate(geom = 'text', label = paste0("r==", round(bicorAndPvalue(x = scatterplot_Rpl$Rpl7, scatterplot_Rpl$Rpl19)$bicor[1,1], 2)), 
+         x = -0.23, y = 0.4, hjust = 0, parse=TRUE, size = 3) + 
+  annotate(geom = 'text', label = paste0("P==", formatC(bicorAndPvalue(x = scatterplot_Rpl$Rpl7, scatterplot_Rpl$Rpl19)$p[1,1], digits = 2, format = "e")), x = -0.23, y = 0.3, hjust = 0,parse=TRUE, size = 3)
+
+p2 <- ggplot(scatterplot_Rpl, aes(x = Rpl7, y = Rpl23)) + geom_ribbon(stat='smooth', method = "lm", se=TRUE, alpha=0.1, span = 0.7, fill = "#92278F") + geom_line(stat='smooth', method = "lm", alpha=0.1, span = 0.7, col = "#92278F") + geom_point(col = "#92278F", size = 1, alpha = 0.8) + theme_panel + theme(panel.border = element_rect(colour = "black", fill = NA), axis.line.x = element_blank(), axis.line.y = element_blank()) + 
+  annotate(geom = 'text', label = paste0("r==", round(bicorAndPvalue(x = scatterplot_Rpl$Rpl7, scatterplot_Rpl$Rpl23)$bicor[1,1], 2)), 
+         x = -0.23, y = 0.5, hjust = 0, parse=TRUE, size = 3) + 
+  annotate(geom = 'text', label = paste0("P==", formatC(bicorAndPvalue(x = scatterplot_Rpl$Rpl7, scatterplot_Rpl$Rpl23)$p[1,1], digits = 2, format = "e")), x = -0.23, y = 0.4, hjust = 0,parse=TRUE, size = 3)
+
+p3 <- ggplot(scatterplot_Rpl, aes(x = Rpl19, y = Rpl23)) + geom_ribbon(stat='smooth', method = "lm", se=TRUE, alpha=0.1, span = 0.7, fill = "#92278F") + geom_line(stat='smooth', method = "lm", alpha=0.1, span = 0.7, col = "#92278F") + geom_point(col = "#92278F", size = 1, alpha = 0.8) + theme_panel + theme(panel.border = element_rect(colour = "black", fill = NA), axis.line.x = element_blank(), axis.line.y = element_blank()) + 
+  annotate(geom = 'text', label = paste0("r==", round(bicorAndPvalue(x = scatterplot_Rpl$Rpl19, scatterplot_Rpl$Rpl23)$bicor[1,1], 2)), 
+         x = -0.35, y = 0.5, hjust = 0, parse=TRUE, size = 3) + 
+  annotate(geom = 'text', label = paste0("P==", formatC(bicorAndPvalue(x = scatterplot_Rpl$Rpl19, scatterplot_Rpl$Rpl23)$p[1,1], digits = 2, format = "e")), x = -0.35, y = 0.4, hjust = 0,parse=TRUE, size = 3)
+
+svglite::svglite(file = "../data/export/images/F1F_rpl_scatter.svg", width = 2.5, height = 6)
+plot(p1 / p2 / p3)
+dev.off()
+```
+
+
+```{r single protein manhattan}
+# Filter the QTL data to 1e-4 to keep all important SNPs, but fill in the lower ones with a geom_rect
+df <- pqtl_m %>% filter(!is.na(proxy)) %>% filter(pvalue < 1e-4) %>% mutate(col = case_when((proxy == "cis" & pvalue < 0.0001) ~ "cis", (proxy == "trans" & pvalue < 5e-8) ~ "trans", TRUE ~ "removed"))
+
+snploc_label <- df %>% dplyr::select(snp_chr, snp_bp_abs) %>% group_by(snp_chr) %>% mutate(snp_bp_abs = mean(snp_bp_abs)) %>% dplyr::select(snp_chr, snp_bp_abs) %>% distinct()
+
+p <- ggplot(df) + 
+  annotate("rect", xmin = min(df$snp_bp_abs, na.rm = TRUE), xmax = max(df$snp_bp_abs, na.rm = TRUE), ymin = 0, ymax = 4, fill = "gray80") +
+  geom_point(data = subset(df, col == "removed"), aes(x = snp_bp_abs, y = -log10(pvalue), col = col), size = 0.4) + 
+  geom_point(data = subset(df, col == "trans"), aes(x = snp_bp_abs, y = -log10(pvalue), col = col), size = 0.4) + 
+  geom_point(data = subset(df, col == "cis"), aes(x = snp_bp_abs, y = -log10(pvalue), col = col), size = 0.4) + 
+  geom_hline(yintercept = -log10(1e-4), col = "gray50", size = 1) +
+  geom_hline(yintercept = -log10(5e-8), col = "gray50", size = 1) +
+  mhtheme + labs(x = "chromosome", y = "-log10(pvalue)") + scale_color_manual(values = c("removed" = "gray80", "trans" = "#92278F", "cis" = "#CFA2CB")) + scale_x_continuous(breaks = snploc_label$snp_bp_abs, labels = sub("chr", "", snploc_label$snp_chr), expand = expansion(mult = c(-0.001, -0.001))) + scale_y_continuous(expand = expansion(mult = c(0, 0)))
+
+svglite::svglite("../data/export/images/F1D_manhattan_pqtl.svg", width = 5, height = 3)
+p
+dev.off()
+```
+
+```{r gene location plot}
+svglite::svglite("../data/export/images/F1E_snp_gene_location.svg")
+cp_pqtl_locplot(pqtl_m %>% dplyr::select(rsID, snp_bp_abs, snp_chr, gene_symbol, p_start_position_abs, p_end_position_abs, p_chromosome_name, pvalue, proxy)) 
+dev.off()
+```
+
+
+### Figure 1I
+
+```{r gentype plots}
+# Create plots for each of the screentargets
+phenomeasure <- phenomeasure %>% mutate(strain = rownames(phenomeasure))
+
+prot_m_summarized <- prot_m %>% as.data.frame %>% mutate(strain = sub("_.*","", rownames(prot_m))) %>% dplyr::select(strain, everything()) %>% filter(strain %in% phenomeasure$strain) %>% group_by(strain) %>% summarise_all(.funs = "mean", na.rm = TRUE)
+
+prot_m_summarized <- prot_m_summarized %>% as.data.frame() %>% `rownames<-`(.$strain) 
+
+
+#Figure 1 EPHX1
+screentarget_accession <- (proteinlist %>% filter(tolower(Gene.Name) == tolower("EPHX1")))[1,1]
+screentarget_protdata <- prot_m_summarized %>% dplyr::select(!!rlang::sym(screentarget_accession)) %>% mutate(strain = prot_m_summarized$strain) %>% dplyr::select(strain, everything())
+screentarget_topsnps <- pqtl_m %>% filter(tolower(gene_symbol) == tolower("EPHX1")) %>% filter(rsID == "rs32746574") %>% dplyr::select(rsID)
+
+screentarget_gentype <- gentype %>% filter(rsID == screentarget_topsnps$rsID[1]) %>% `row.names<-`(., .$rsID) %>% dplyr::select(-(snp_chr:snp_bp_mm10)) %>% t %>% as.data.frame() %>% mutate(strain = row.names(.))
+
+p1 <- left_join(screentarget_protdata, screentarget_gentype) %>% filter(across(3, ~ . %in% c("T T", "G G", "A A", "C C"))) %>% ggplot(., aes(y = !!rlang::sym(colnames(.)[2]), x = !!rlang::sym(colnames(.)[3]))) + geom_boxplot(outlier.shape = NA) + ylab("EPHX1") + theme_bw() + ggpubr::stat_compare_means(aes(label = as.numeric(..p.format..)), hjust = 0.5, vjust = 1, label.x = 1.5, method = "t.test") + lims(y = c(-0.6,0.6))
+
+svglite::svglite(paste0("../data/export/images/F1I_EPHX1.svg"), width = 3, height = 3)
+p1
+dev.off()
+```
+
+### Figure SF3
+
+```{r chromosome 1 plot}
+targets <- c("MPZ", "UFC1", "NIT1", "TIPRL", "DUSP23", "PCP4L1", "EPHX1", "BPNT1")
+traits <- c("NMR Lean Mass 0 wks diet_pmid25651185", "NMR Lean Mass 4 wks diet_pmid25651185", "KC_pmid26694027", "total cholesterol_pmid20054062", "BF_Percent_Growth_2to8wks_pmid25651185", "Insulin pg/ml_pmid25651185", "Weight-8 wks diet_pmid25651185", "HOMA-IR_pmid25651185")
+
+df <- pqtl_m %>% filter(toupper(gene_symbol) %in% targets) %>% filter(snp_chr == "chr1")
+dftrait <- traitgwas %>% filter(trait_name %in% traits) %>% filter(CHR == 1)
+
+protlocs <- df %>% group_by(gene_symbol) %>% mutate(protloc = (p_start_position + p_end_position) / 2) %>% dplyr::select(gene_symbol, protloc, p_start_position, p_end_position) %>% mutate(y = 1) %>% distinct()
+
+range <- c(min(df$p_start_position), max(df$p_end_position))
+range[1] <- range[1] - 1000000
+range[2] <- range[2] + 1000000
+
+bins <- data.frame(start = seq(range[1], range[2], 50e4), end = c(seq(range[1], range[2], 50e4)[-1] - 1, range[2])) %>% mutate(bin = paste(start, end, sep = "_"))
+
+df <- data.table::as.data.table(df %>% dplyr::select(gene_symbol, snp_bp, pvalue))[data.table::as.data.table(bins), on=c(paste0("snp_bp",">", "start"), paste0("snp_bp","<","end")), names(bins)[3] := mget(paste0("i.", names(bins)[3]))] %>% as.data.frame()
+
+df <- left_join(bins, left_join(expand.grid(bins$bin, df$gene_symbol %>% unique, stringsAsFactors = FALSE) %>% `colnames<-`(c("bin", "gene_symbol")), df %>% group_by(gene_symbol, bin) %>% summarize(pvalue = min(pvalue)))) %>% mutate(loc = (start + end) / 2)
+
+df[is.na(df)] <- 0.01
+
+
+dftrait <- data.table::as.data.table(dftrait %>% dplyr::select(trait_name, BP, P))[data.table::as.data.table(bins), on=c(paste0("BP",">", "start"), paste0("BP","<","end")), names(bins)[3] := mget(paste0("i.", names(bins)[3]))] %>% as.data.frame()
+
+dftrait <- left_join(bins, left_join(expand.grid(bins$bin, dftrait$trait_name %>% unique, stringsAsFactors = FALSE) %>% `colnames<-`(c("bin", "trait_name")), dftrait %>% group_by(trait_name, bin) %>% summarize(pvalue = min(P)))) %>% mutate(loc = (start + end) / 2)
+
+dftrait[is.na(dftrait)] <- 0.01
+
+p1 <- ggplot(df, aes(x = loc, y = -log10(pvalue), col = gene_symbol)) + geom_step() + geom_point(data = protlocs, aes(x = protloc, y = 0.25, col = gene_symbol, fill = gene_symbol), shape = 24, size = 2) + coord_cartesian(xlim = range) + theme_localmanhattan + facet_wrap(~ gene_symbol, nrow = 9, scales = "free_y") + scale_x_continuous(label = function(x) format(x/1e6)) + labs(x = "Chr1 - Position (Mb)")
+
+p2 <- ggplot(dftrait, aes(x = loc, y = -log10(pvalue), col = trait_name)) + geom_step() + coord_cartesian(xlim = range) + theme_localmanhattan + facet_wrap(~ trait_name, nrow = 9, scales = "free_y") + scale_x_continuous(label = function(x) format(x/1e6)) + labs(x = "Chr1 - Position (Mb)")
+
+svglite::svglite(file = paste0("../data/export/images/SF3_chr1_targets_panel.svg"), width = 5, height = 14)
+plot(p1 / p2)
+dev.off()
+
+
+
+
+df <- pqtl_m %>% filter(toupper(gene_symbol) %in% targets)
+
+protlocs <- df %>% group_by(gene_symbol) %>% mutate(protloc = (p_start_position_abs + p_end_position_abs) / 2) %>% dplyr::select(gene_symbol, protloc, p_start_position_abs, p_end_position_abs) %>% mutate(y = 1) %>% distinct()
+
+bins <- data.frame(start = seq(0, max(df$snp_bp_abs, na.rm = TRUE), 1e6), end = c(seq(0, max(df$snp_bp_abs, na.rm = TRUE), 1e6)[-1] - 1, max(df$snp_bp_abs, na.rm = TRUE))) %>% mutate(bin = paste(start, end, sep = "_"))
+
+df <- data.table::as.data.table(df %>% dplyr::select(gene_symbol, snp_bp_abs, pvalue))[data.table::as.data.table(bins), on=c(paste0("snp_bp_abs",">", "start"), paste0("snp_bp_abs","<","end")), names(bins)[3] := mget(paste0("i.", names(bins)[3]))] %>% as.data.frame()
+
+df <- left_join(bins, left_join(expand.grid(bins$bin, df$gene_symbol %>% unique, stringsAsFactors = FALSE) %>% `colnames<-`(c("bin", "gene_symbol")), df %>% group_by(gene_symbol, bin) %>% summarize(pvalue = min(pvalue)))) %>% mutate(loc = (start + end) / 2)
+
+df[is.na(df)] <- 0.01
+
+chrlocs <- mm10_chrsize %>% mutate(V4 = V2+V3) %>% dplyr::select(V1, V3, V4) %>% `colnames<-`(c("snp_chr", "chrstart", "chrend")) %>% mutate(chrmean = (chrstart + chrend) / 2)
+
+p1 <- ggplot(df, aes(x = loc, y = -log10(pvalue), col = gene_symbol)) + geom_step() + geom_point(data = protlocs, aes(x = protloc, y = 0.25, col = gene_symbol, fill = gene_symbol), shape = 24, size = 2) + scale_x_continuous(breaks = chrlocs$chrmean, labels = sub("chr", "",chrlocs$snp_chr)) + theme_localmanhattan + theme(legend.position = c(0.9, 0.6))
+
+svglite::svglite(file = paste0("../data/export/images/SF3_chr1_targets_manhattan.svg"), width = 3, height = 3)
+plot(p1)
+dev.off()
+```
+
+
+### Figure 2A
+
+```{r more locplots}
+
+traitloc_data <- traitgwas %>% dplyr::select(SNP, P, trait_name, study) %>% filter(P < 0.05) %>% left_join(., snploc %>% dplyr::select(refsnp_id, chr_name, chrom_start) %>% distinct(), by = c("SNP" = "refsnp_id")) %>% filter(!is.na(chr_name))
+
+names <- traitloc_data %>% .$trait_name %>% unique %>% as.data.frame() %>% `colnames<-`("trait_name")
+names$trait_name_new <- names$trait_name %>% tolower %>% stringr::str_extract(., ".*_") %>% sub("_$", "", .)
+
+traitloc_data <- left_join(traitloc_data, names) %>% dplyr::select(-trait_name) %>% dplyr::rename(trait_name = trait_name_new)
+
+traitname <- read.csv("../data/database/traitnames.csv") %>% dplyr::select(trait_name, trait_category)
+
+
+# Add trait categories from external file
+traitloc_data <- left_join(traitloc_data, traitname %>% mutate(trait_name = tolower(trait_name)))
+
+traittable <- traitloc_data %>% dplyr::select(trait_name, trait_category) %>% distinct
+
+traittable <- traittable %>% 
+  mutate(trait_category = case_when(grepl("weight|NMR|Fat pad weights|body weight|body composition (NMR)|body composition", trait_category, ignore.case = TRUE, fixed = FALSE) == TRUE ~ "body composition", TRUE ~ trait_category))
+
+traittable <- traittable %>% 
+  mutate(trait_category = case_when(grepl("grip", trait_name, ignore.case = TRUE) == TRUE ~ "muscle",
+                                    grepl("bmd", trait_name, ignore.case = TRUE) == TRUE ~ "bone",
+                                    grepl("nmr_mass|bw_|visceral", trait_name, ignore.case = TRUE) == TRUE ~ "body composition",
+                                    grepl("activity", trait_name, ignore.case = TRUE) == TRUE ~ "mitochondria",
+                                    grepl("ck_reue", trait_name, ignore.case = TRUE) == TRUE ~ "muscle",
+                                    grepl("insulin|glucose|homa|gtt|glycerol", trait_name, ignore.case = TRUE) == TRUE ~ "glucose/insulin",
+                                    grepl("cholesterol|hdl|triglyceride|fatty|ffa", trait_name, ignore.case = TRUE) == TRUE ~ "lipid panel",
+                                    grepl("food", trait_name, ignore.case = TRUE) == TRUE ~ "food intake",
+                                    grepl("heart|pmid25480693", trait_name, ignore.case = TRUE) == TRUE ~ "cardiac",
+                                    TRUE ~ trait_category))
+
+traittable <- traittable %>% mutate(trait_category = case_when(grepl("heart|pmid25480693", trait_category, ignore.case = TRUE) == TRUE ~ "cardiac",TRUE ~ trait_category))
+
+traittable <- traittable %>% mutate(plotorder = case_when(trait_category == "cardiac" ~ 1,
+                                                          trait_category == "body composition" ~ 2,
+                                                          trait_category == "bone" ~ 3,
+                                                          trait_category == "muscle" ~ 4,
+                                                          trait_category == "food intake" ~ 5,
+                                                          trait_category == "glucose/insulin" ~ 6,
+                                                          trait_category == "lipid panel" ~ 7,
+                                                          trait_category == "cytokines" ~ 8,
+                                                          trait_category == "mitochondria" ~ 9))
+
+
+
+traitloc_data <- traitloc_data %>% dplyr::select(-trait_category) %>% left_join(., traittable)
+
+# Reorder the trait_name column by the trait_categories column
+traitloc_data$trait_name <- factor(traitloc_data$trait_name, levels = unique(traitloc_data$trait_name[order(traitloc_data$plotorder)]))
+
+
+# Calculate the label positions for the plot
+traitloc_label <- traitloc_data %>% dplyr::select(trait_name, trait_category) %>% distinct() %>% arrange(trait_name) %>% mutate(locnumber = 1:nrow(.)) %>% group_by(trait_category) %>% mutate(locnumber_category = mean(locnumber))
+
+traitloc_label <- traitloc_label %>% mutate(diffnum = abs(locnumber - locnumber_category)) %>% group_by(trait_category) %>% slice_min(diffnum, with_ties = FALSE)
+
+snploc_label <- traitloc_data %>% dplyr::select(chr_name, chrom_start) %>% group_by(chr_name) %>% mutate(snp_loc = mean(chrom_start)) %>% dplyr::select(chr_name, snp_loc) %>% distinct()
+
+
+
+traitloc_plot <- ggplot(traitloc_data, aes(x = chrom_start, y = trait_name)) + geom_bin2d(na.rm = TRUE, bins = 100) + scale_fill_gradient(low = "white", high = "#92278F") + mytheme_phewas + theme(legend.position = "null") + labs(x = "", y = "trait") + scale_x_continuous(breaks = snploc_label$snp_loc, labels = snploc_label$chr_name, expand = c(0,0)) + scale_y_discrete(expand = c(0,0))
+
+traitloc_plot <- ggplot(traitloc_data, aes(x = chrom_start, y = trait_name)) + geom_bin2d(na.rm = TRUE, bins = 100) + scale_fill_gradient(low = "white", high = "#92278F", limit = c(0,5000)) + mytheme_phewas + theme(legend.position = "null") + labs(x = "", y = "trait") + scale_x_continuous(breaks = snploc_label$snp_loc, labels = snploc_label$chr_name, expand = c(0,0)) + scale_y_discrete(expand = c(0,0))
+
+# A custom color range limit is set from 0-4000 counts, due to the presence of extreme values
+# Values outside of the range are 'squished' to fit the maximum of the range
+traitloc_plot <- ggplot(traitloc_data, aes(x = chrom_start, y = trait_name)) + geom_bin2d(na.rm = TRUE, bins = 100) + scale_fill_gradient(low = "white", high = "#92278F", limit = c(0,2000), oob = scales::squish) + mytheme_phewas + theme(legend.position = "null") + labs(x = "", y = "trait") + scale_x_continuous(breaks = snploc_label$snp_loc, labels = snploc_label$chr_name, expand = c(0,0)) + scale_y_discrete(expand = c(0,0))
+
+# traitloc_plot <- ggplot(traitloc_data, aes(x = chrom_start, y = trait_name)) + geom_bin2d(na.rm = TRUE, bins = 500) + scale_fill_gradient(low = "white", high = "#92278F", limit = c(0,100), oob = scales::squish) + mytheme_phewas + theme(legend.position = "null") + labs(x = "", y = "trait") + scale_x_continuous(breaks = snploc_label$snp_loc, labels = snploc_label$chr_name, expand = c(0,0)) + scale_y_discrete(expand = c(0,0))
+
+
+traitpval_plot <- ggplot(traitloc_data, aes(x = -log10(P), y = trait_name, col = as.character(plotorder))) + geom_point(size = 1.4) + geom_vline(xintercept = 6, col = "black", size = 1, linetype='dashed') + labs(x = "", y = "") + scale_y_discrete(breaks = traitloc_label$trait_name, labels = traitloc_label$trait_category, position = "right", expand = c(0,0)) + mytheme_phewas2 + theme(legend.position = "null") + scale_color_manual(values = c(rep_len(c("#92278F", "#CFA2CB"), length(unique(traitloc_data$plotorder))))) + scale_x_continuous(expand = c(0,0))
+
+
+traitqtl_plot <- ggplot(traitloc_data, aes(x = chrom_start, y = -log10(P), col = chr_name)) + geom_point(size = 1.4) + geom_hline(yintercept = 6, col = "black", size = 1, linetype='dashed') + labs(x = "", y = "") + mytheme_phewas2 + theme(legend.position = "null") + scale_x_continuous(breaks = snploc_label$snp_loc, labels = snploc_label$chr_name, expand = c(0,0)) + scale_color_manual(values = c(rep_len(c("#92278F", "#CFA2CB"), length(unique(traitloc_data$chr_name))))) + scale_y_continuous(expand = c(0,0)) + guides(x = "none")
+
+png(file = "../data/export/images/F2A_qtl_heatmap.png", width = 1600, height = 1600)
+plot(traitqtl_plot + plot_spacer() + traitloc_plot + traitpval_plot + plot_layout(widths = c(2,1.2), heights = c(1.2,2)))
+dev.off()
+
+# rm(traitpval_plot)
+# rm(traitloc_plot)
+# rm(traitqtl_plot)
+```
+
+
+### Generate protein-trait correlation table
+
+```{r protein/trait correlation}
+# Create protein-trait correlation object for plotting
+cor <- WGCNA::bicorAndPvalue(prot_m_summarized, phenomeasure, use = "pairwise.complete.obs")
+names(cor)[1] <- "cor"
+
+cor <- bind_cols(cor$cor %>% reshape2::melt() %>% as.data.table() %>% `colnames<-`(., c("p1", "p2", "cor")), cor$p %>% reshape2::melt() %>% as.data.table() %>% `colnames<-`(., c("p1", "p2", "pval")) %>% dplyr::select(pval)) %>% mutate(qval = p.adjust(p = .$pval, method = "BH")) %>% mutate(varID1 = p1, varID2 = p2)
+      
+cor$VarVar <- paste0(cor$p1, "_", cor$p2)
+
+cor <- left_join(cor, proteinlist, by = c("p1" = "Accession")) %>% mutate(Gene.Name = toupper(Gene.Name)) %>% filter(!is.nan(pval)) %>% mutate(inScreening = (.$Gene.Name %in% screen_targets$targets))
+```
+
+
+### Figures 2C, H, I, 
+
+```{r protein and trait manhattan mirrored}
+phenomeasure$strain <- rownames(phenomeasure)
+
+prot_m_summarized <- prot_m %>% as.data.frame() %>% mutate(strain = sub("_.*","", rownames(prot_m))) %>% dplyr::select(strain, everything()) %>% filter(strain %in% phenomeasure$strain) %>% group_by(strain) %>% summarise_all(.funs = "mean", na.rm = TRUE)
+
+prot_m_summarized <- prot_m_summarized %>% as.data.frame() %>% `rownames<-`(.$strain) 
+
+
+# Calculate the ranges and label positions for the plot
+snploc_range <- c(0, max(max(traitgwas$BP, na.rm = TRUE), max(pqtl_m$snp_bp_abs, na.rm = TRUE)))
+snploc_label <- bind_rows(traitgwas %>% dplyr::select(CHR, BP), pqtl_m %>% dplyr::select(snp_chr, snp_bp_abs) %>% `colnames<-`(c("CHR", "BP")) %>% filter(!is.na(BP)) %>% mutate(CHR = sub("chr", "", .$CHR))) %>% dplyr::select(CHR, BP) %>% group_by(CHR) %>% mutate(snp_loc = mean(BP)) %>% dplyr::select(CHR, snp_loc) %>% distinct()
+
+manhattan_table <- data.frame(trait = c("glucose_pmid25651185", "glucose_lc_pmid20054062", "nmr fat mass 0 wks diet_pmid25651185"), protein = c("MCEE", "SLC37A4", "SLC37A4"), plot = c("C", "H", "I"))
+
+scatterdata <- cor
+
+for(i in 1:nrow(manhattan_table)){
+  print(paste0("running row: ", i))
+
+x <- pqtl_m %>% filter(tolower(gene_symbol) == tolower(manhattan_table$protein[i])) %>% dplyr::select(snp_chr, snp_bp_abs, pvalue) %>% `colnames<-`(c("CHR", "BP", "P")) %>% filter(!is.na(BP)) %>% mutate(CHR = sub("chr", "", .$CHR))
+
+x$CHR <- factor(x$CHR, levels = c(1:19, "X"))
+
+p1 <- x %>% ggplot(., aes(y = BP, x = -log10(P), col = CHR)) + geom_vline(xintercept = 6, linetype = "dashed") + geom_point(alpha = 0.5) + theme_panel  + scale_y_reverse(expand = c(0.01,0.01), limits = c(snploc_range[2], snploc_range[1]), position = "right") + scale_color_manual(values = c(rep_len(c("#92278F", "#CFA2CB"), length(unique(traitgwas$CHR)))), breaks = c(1:19, "X")) + scale_x_reverse(expand = c(0,0.15)) + theme(axis.text.y = element_blank(), plot.title = element_text(hjust = 1)) + ggtitle(manhattan_table$protein[i]) + labs(x = "", y = "") + theme(axis.title.y = element_blank())
+
+p2 <- traitgwas %>% filter(tolower(trait_name) == tolower(manhattan_table$trait[i])) %>% ggplot(., aes(y = BP, x = -log10(P), col = CHR)) + geom_vline(xintercept = 6, linetype = "dashed") + geom_point(alpha = 0.5) + theme_panel  + scale_y_reverse(breaks = snploc_label$snp_loc, labels = snploc_label$CHR, expand = c(0.01,0.01), limits = c(snploc_range[2], snploc_range[1])) + scale_color_manual(values = c(rep_len(c("#92278F", "#CFA2CB"), length(unique(traitgwas$CHR))))) + scale_x_continuous(expand = c(0,0.15)) + theme(axis.text.y = element_text(colour =  c(rep_len(c("#92278F", "#CFA2CB"), length(unique(traitgwas$CHR))))), plot.title = element_text(hjust = 0)) + ggtitle(manhattan_table$trait[i]) + labs(x = "", y = "") + theme(axis.title.y = element_blank())
+
+svglite::svglite(file = paste0("../data/export/images/F2", manhattan_table$plot[i],".svg"), width = 6, height = 4)
+print(p1 + p2)
+dev.off()
+
+}
+```
+
+### Figures 2 D E G O P Q
+
+```{r Figures 2 D E G O P Q}
+############################################################################
+### Loop for SNP boxplots ###
+############################################################################
+
+manhattan_table <- data.frame(trait = c("glucose_pmid25651185", "Visceral Fat_pmid25651185", "total cholesterol_pmid20054062", "nmr lean mass 4 wks diet_pmid25651185", "nmr lean mass 4 wks diet_pmid25651185", "nmr lean mass 4 wks diet_pmid25651185"), protein = c("mcee", "mcee", "ociad2", "tacc2", "mocs2", "inmt"), plot = c("E", "D", "G", "Q", "P", "O"))
+
+for(i in 1:nrow(manhattan_table)){
+  print(paste0("running row: ", i))
+
+x <- pqtl_m %>% filter(tolower(gene_symbol) == tolower(manhattan_table$protein[i])) %>% dplyr::select(snp_chr, snp_bp_abs, pvalue) %>% `colnames<-`(c("CHR", "BP", "P")) %>% filter(!is.na(BP)) %>% mutate(CHR = sub("chr", "", .$CHR))
+
+x$CHR <- factor(x$CHR, levels = c(1:19, "X"))
+
+# For protein target, get a list of the rsIDs with the lowest 10 pvalues
+topsnp_pqtl <- pqtl_m %>% filter(tolower(gene_symbol) == tolower(manhattan_table$protein[i])) %>% arrange(pvalue) %>% mutate(rank = 1:nrow(.)) %>% dplyr::select(rsID, pvalue, rank) %>% `colnames<-`(c("SNP", "P", "rank"))
+
+topsnp_trait <- traitgwas %>% filter(tolower(trait_name) == tolower(manhattan_table$trait[i])) %>% arrange(P)
+
+topsnp_trait <- topsnp_trait%>% mutate(rank = 1:nrow(.)) %>% dplyr::select(SNP, P, rank)
+
+topsnp_overlap <- left_join(topsnp_pqtl %>% filter(SNP %in% intersect(topsnp_pqtl$SNP, topsnp_trait$SNP)), topsnp_trait %>% filter(SNP %in% intersect(topsnp_pqtl$SNP, topsnp_trait$SNP)), by = "SNP") %>% mutate(rank_avg = (rank.x + rank.y) / 2) %>% arrange(rank_avg) %>% .[1,1] %>% unlist
+
+# First get the accession of the screentarget
+screentarget_accession <- (proteinlist %>% filter(tolower(Gene.Name) == tolower(manhattan_table$protein[i])))[1,1]
+
+# Next select the protein data
+screentarget_protdata <- prot_m_summarized %>% dplyr::select(!!rlang::sym(screentarget_accession)) %>% mutate(strain = prot_m_summarized$strain) %>% dplyr::select(strain, everything())
+
+screentarget_gentype <- gentype %>% filter(rsID == topsnp_overlap) %>% `row.names<-`(., .$rsID) %>% dplyr::select(-(snp_chr:snp_bp_mm10)) %>% t %>% as.data.frame() %>% mutate(strain = row.names(.))
+
+screentarget_traitdata <- tryCatch(phenomeasure %>% `colnames<-`(tolower(colnames(.))) %>% dplyr::select(strain, tolower(manhattan_table$trait[i])), error=function(e) e)
+
+p4 <- left_join(screentarget_protdata, screentarget_gentype) %>% filter(across(3, ~ . %in% c("T T", "G G", "A A", "C C"))) %>% ggplot(., aes(y = !!rlang::sym(colnames(.)[2]), x = !!rlang::sym(colnames(.)[3]))) + geom_boxplot(col = "#92278F", fill = "#CFA2CB", outlier.shape = NA) + ylab(manhattan_table$protein[i]) + theme_panel + ggpubr::stat_compare_means(aes(label = ..p.signif..), hjust = 0.5, vjust = 1, label.x = 1.5, method = "t.test") + theme(panel.border = element_rect(colour = "black", fill = NA), axis.line.x = element_blank(), axis.line.y = element_blank())
+
+p5 <- left_join(screentarget_gentype %>% dplyr::select(strain, everything()), screentarget_traitdata) %>% filter(across(2, ~ . %in% c("T T", "G G", "A A", "C C"))) %>% ggplot(., aes(y = !!rlang::sym(colnames(.)[3]), x = !!rlang::sym(colnames(.)[2]))) + geom_boxplot(col = "#92278F", fill = "#CFA2CB", outlier.shape = NA) + theme_panel + ggpubr::stat_compare_means(aes(label = ..p.signif..), hjust = 0.5, vjust = 1, label.x = 1.5, method = "t.test") + scale_y_continuous(position = "right") + theme(panel.border = element_rect(colour = "black", fill = NA), axis.line.x = element_blank(), axis.line.y = element_blank())
+
+svglite::svglite(file = paste0("../data/export/images/F2", manhattan_table$plot[i],".svg"), width = 3, height = 2)
+print(p4 + p5)
+dev.off()
+
+}
+```
+
+
+### Figures 2 F L M N
+
+```{r Figures 2 F L M N}
+############################################################################
+### Loop for scatterplots ###
+############################################################################
+
+manhattan_table <- data.frame(trait = c("total cholesterol_pmid20054062", 
+                                        "nmr lean mass 4 wks diet_pmid25651185", 
+                                        "nmr lean mass 4 wks diet_pmid25651185", 
+                                        "nmr lean mass 4 wks diet_pmid25651185"), 
+                              protein = c("ociad2", 
+                                          "tacc2", 
+                                          "mocs2", 
+                                          "inmt"), 
+                              plot = c("F", 
+                                       "N", 
+                                       "M", 
+                                       "L"))
+
+for(i in 1:nrow(manhattan_table)){
+  print(paste0("running row: ", i))
+  
+  scatterdata <- cor %>% filter(p1 == (proteinlist %>% filter(tolower(Gene.Name) == tolower(manhattan_table$protein[i])) %>% dplyr::select(Accession) %>% unlist %>% unname) & tolower(p2) == tolower(manhattan_table$trait[i]))
+
+p3 <- cbind(
+  prot_m_summarized %>%dplyr::select(scatterdata[1, "p1"] %>% unlist %>% as.character()),
+  phenomeasure %>%dplyr::select(scatterdata[1, "p2"] %>% unlist %>% as.character())
+  ) %>% filter(!is.na(.[,2])) %>% ggplot(., aes_string(x = (scatterdata[1, "p1"] %>% unlist %>% as.character()), y = sym((scatterdata[1, "p2"] %>% unlist %>% as.character())))) + geom_ribbon(stat='smooth', method = "lm", se=TRUE, alpha=0.1, span = 0.7, fill = "#92278F") + geom_line(stat='smooth', method = "lm", alpha=0.1, span = 0.7, col = "#92278F") + geom_point(col = "#92278F", size = 1, alpha = 0.8) + ggtitle(label = paste0("R2: ", scatterdata[1, "cor"] %>% unlist %>% formatC(., digits = 2, format = "f") %>% as.character(), " p-value: ", scatterdata[1, "pval"] %>% unlist %>% formatC(., digits = 3, format = "f") %>% as.character())) + theme_panel + theme(panel.border = element_rect(colour = "black", fill = NA), axis.line.x = element_blank(), axis.line.y = element_blank())
+  
+svglite::svglite(file = paste0("../data/export/images/F2", manhattan_table$plot[i],".svg"), width = 3, height = 3)
+print(p3)
+dev.off()
+
+}
+```
+
+
+### Figure S3
+
+Genebass was accessed via https://genebass.org/
+Information for the following genes was extracted and exported as .csv files:
+MPZ
+BPNT1
+PCP4L1
+DUSP23
+EPHX1
+NIT1
+
+The data was accessed on 25/08/2021, Genebass v0.7.8-alpha
+
+```{r genebass}
+files <- list.files("../data/database/genebass", full.names = TRUE)
+
+targets <- list()
+
+for(i in 1:length(files)){
+  targets[[i]] <- read.csv(files[i]) %>% dplyr::select(1,3,5,9) %>% 
+    `colnames<-`(c("trait", "traittype", "traitcat", "p")) %>% 
+    mutate(gene = files[i] %>% stringr::str_extract("........_2021") %>% sub("\\_2021", "",.) %>% sub(".*\\_", "", .))
+  
+  names(targets)[i] <- files[i] %>% stringr::str_extract("........_2021") %>% sub("\\_2021", "",.) %>% sub(".*\\_", "", .)
+}
+
+targets <- do.call(rbind, targets) %>% 
+  mutate(traitcat_first = stringr::str_extract(.$traitcat, "^.*?\\>")) %>% 
+  mutate(varname = paste(gene, trait, sep = " / "))
+
+targets$trait <- factor(targets$trait, levels = targets %>% arrange(traitcat_first, p) %>% .$trait %>% unique)
+
+
+# UK Biobank assessment centre, excluding touchscreen data.
+svglite::svglite(filename = "../data/export/images/SF3_genebass.svg", width = 6, height = 5)
+targets %>% 
+  filter(traitcat_first %in% c("UK Biobank Assessment Centre >", "Biological samples >")) %>% 
+  filter(!grepl("Touchscreen",traitcat)) %>% filter(!grepl("Medications",traitcat)) %>% 
+  filter(!grepl("Operations",traitcat)) %>% slice_min(p, n = 10) %>% 
+  ggplot(., aes(y = reorder(varname, -log10(p)), x = -log10(p))) + geom_bar(stat = "identity", width = 0.6) + scale_y_discrete(position = "right") + theme_minimal()
+dev.off()
+```
