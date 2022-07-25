@@ -1,0 +1,308 @@
+trait_name,trait_category,Priority,For online
+grip,muscle & bone,+,+
+gripbw,muscle & bone,+,+
+glucose,metabolite,+,+
+ck,cytokines,,+
+cholesterol,metabolite,,+
+triglyceride,metabolite,,+
+gtt0,insulin response,+,+
+gtt15,insulin response,+,+
+gtt60,insulin response,+,+
+gtt120,insulin response,+,+
+gtt180,insulin response,+,+
+gttauc,insulin response,+,+
+homab,insulin response,+,+
+homair,insulin response,+,+
+insulin,insulin response,+,+
+bw,body composition,+,+
+GM-CSF,cytokines,,+
+G-CSF,cytokines,,+
+IL-1a,cytokines,,+
+IL-2,cytokines,,+
+IFNr,cytokines,,+
+IL-6,cytokines,,+
+IL-1b,cytokines,,+
+IL-4,cytokines,,+
+IL-10,cytokines,,+
+IL-7,cytokines,,+
+IL-12 (p40),cytokines,,+
+IL-12 (p70),cytokines,,+
+IL-13,cytokines,,+
+KC,cytokines,,+
+IL-15,cytokines,,+
+IP-10,cytokines,,+
+MCP-1,cytokines,,+
+MIP-1a,cytokines,,+
+M-CSF,cytokines,,+
+MIP-1b,cytokines,,+
+MIP-2,cytokines,,+
+MIG,cytokines,,+
+RANTES,cytokines,,+
+TNFa,cytokines,,+
+lean mass,body composition,+,+
+fat mass,body composition,+,+
+adiposity,body composition,+,+
+Free_fluid,body composition,,
+free fatty acids,metabolite,,+
+Heart (g),body composition,,+
+Fat_mass,body composition,,+
+NMR_total_Mass,body composition,,+
+NMR_BF_percentage,body composition,,+
+glucose_to_insulin,insulin response,+,+
+Lean_mass,body composition,+,+
+BMD_total,muscle & bone,,+
+BMD_femur,muscle & bone,,+
+BMD_C1-C6,muscle & bone,,+
+Insulin,insulin response,,+
+BW,body composition,+,+
+GFP_percent,body composition,,+
+MFP_percent,body composition,,+
+FFP_percent,body composition,,+
+RFP_percent,body composition,,+
+Glucose,metabolite,+,+
+triglycerides,metabolite,,+
+unesterified cholesterol,metabolite,,+
+total cholesterol,metabolite,,+
+HDL,metabolite,,+
+Glucose_LC,metabolite,,+
+BF_response_0to2wks,body composition,,+
+BF_response_0to4wks,body composition,,+
+Complex I activity,metabolite,,+
+Citrate synthase activity,metabolite,,+
+Complex I activity / Citrate synthase activity,metabolite,,+
+BF_response_0to6wks,body composition,,+
+BF_response_4to8wks,body composition,,+
+FatMass_Response_2to8wks,body composition,,+
+FatMass_Response_0to4wks,body composition,,+
+BF_Percent_Growth_6to8wks,body composition,,+
+Heart/NMR_Mass_8wks,body composition,,+
+NMR_TotalMass_6wks,body composition,,+
+Mesenteric_Fat/NMR_Mass_8wks,body composition,,+
+BF_response_4to6wks,body composition,,+
+BF_Percent_Growth_2to8wks,body composition,,+
+FatMass_PercentGrowth_6to8wks,body composition,,+
+BF_Percent_Growth_0to4wks,body composition,,+
+NMR Free Fluid (g) - 2 wks diet,body composition,,+
+FatMass_Response_4to6wks,body composition,,+
+BF_response_2to4wks,body composition,,+
+FatMass_PercentGrowth_0to6wks,body composition,,+
+FatMass_PercentGrowth_4to6wks,body composition,,+
+Weight-4 wks diet,body composition,,+
+Visceral Fat,body composition,,+
+NMR_TotalMass_0to2wks,body composition,,+
+SAC weight,body composition,,+
+FatMass_Response_0to2wks,body composition,,+
+FatMass_Response_2to6wks,body composition,,+
+BF_Percent_Growth_4to6wks,body composition,,+
+Kidney/NMR_Mass_8wks,body composition,,
+BF_response_2to6wks,body composition,,+
+Retro_Fat/NMR_Mass_8wks,body composition,,+
+BF_Percent_Growth_0to2wks,body composition,,+
+NMR_TotalMass_0to4wks,body composition,,+
+BF_Percent_Growth_2to6wks,body composition,,+
+FatMass_PercentGrowth_2to4wks,body composition,,+
+NMR_BF%_2wks,body composition,,+
+FFA,metabolite,,+
+BF_response_0to8wks,body composition,,+
+FatMass_PercentGrowth_2to8wks,body composition,,+
+FatMass_Response_0to6wks,body composition,,+
+NMR Free Fluid (g) - 8 wks diet,body composition,,+
+NMR_TotalMass_6to8wks,body composition,,+
+FatMass_PercentGrowth_0to4wks,body composition,,+
+FatMass_Response_2to4wks,body composition,,+
+Food Intake - Day 4,rest,,+
+FatMass_PercentGrowth_0to2wks,body composition,,+
+NMR_TotalMass_8wks,body composition,,+
+Lung/NMR_Mass_8wks,body composition,,
+Gonadal_Fat/NMR_Mass_8wks,body composition,,+
+Glycerol,metabolite,,
+NMR Fat Mass 4 wks diet,body composition,,+
+HOMA-IR,insulin response,+,+
+Food_Intake/NMR_Mass_8wks,body composition,,+
+NMR Lean Mass 4 wks diet,body composition,+,+
+FatMass_Response_6to8wks,body composition,,+
+BF_Percent_Growth_0to6wks,body composition,,+
+NMR Free Fluid (g) - 4 wks diet,body composition,,+
+FatMass_PercentGrowth_0to8wks,body composition,,+
+BF_Percent_Growth_2to4wks,body composition,,+
+FatMass_PercentGrowth_4to8wks,body composition,,+
+Food_Intake/NMR_Mass_4wks,body composition,,+
+Liver/NMR_Mass_8wks,body composition,,+
+BF_response_6to8wks,body composition,,+
+Weight-2 wks diet,body composition,,+
+NMR_TotalMass_PercentGrowth_0to8wks,body composition,,+
+NMR_TotalMass_PercentGrowth_4to6wks,body composition,,+
+NMR_BF%_0wks,body composition,,+
+Food Intake - Day 2,rest,,+
+NMR_TotalMass_2wks,body composition,,+
+NMR_TotalMass_2to6wks,body composition,,+
+NMR_TotalMass_4to8wks,body composition,,+
+NMR Lean Mass 0 wks diet,body composition,+,+
+Weight-0 wks diet,body composition,,+
+NMR_TotalMass_PercentGrowth_2to6wks,body composition,,+
+Insulin pg/ml,insulin response,,+
+NMR_TotalMass_0to8wks,body composition,,+
+FatMass_PercentGrowth_2to6wks,body composition,,+
+Spleen Wt,body composition,,+
+NMR_TotalMass_PercentGrowth_4to8wks,body composition,,+
+SubQ Fat Wt,body composition,,+
+Mesenteric Fat Wt,body composition,,+
+NMR Lean Mass 8 wks diet,body composition,+,+
+NMR Free Fluid (g) - 6 wks diet,body composition,,+
+NMR_TotalMass_2to8wks,body composition,,+
+FatMass_Response_0to8wks,body composition,,+
+Heart Wt,body composition,,+
+Food Intake - Day 1,rest,,+
+NMR_BF%_6wks,body composition,,+
+Weight-6 wks diet,body composition,,+
+NMR Fat Mass 2 wks diet,body composition,,+
+NMR Fat Mass 8 wks diet,body composition,,+
+NMR_BF%_8wks,body composition,,+
+SubQ_Fat/NMR_Mass_8wks,body composition,,+
+NMR_TotalMass_PercentGrowth_0to4wks,body composition,,+
+Gonadal Fat Wt,body composition,,+
+NMR_TotalMass_PercentGrowth_0to6wks,body composition,,+
+BF_Percent_Growth_0to8wks,body composition,,+
+NMR_TotalMass_0wks,body composition,,+
+FatMass_Response_4to8wks,body composition,,+
+Visceral Fat/NMR_Mass_8wks,body composition,,+
+NMR_TotalMass_PercentGrowth_2to8wks,body composition,,+
+Spleen/NMR_Mass_8wks,body composition,,+
+BF_Percent_Growth_4to8wks,body composition,,+
+NMR_BF%_4wks,body composition,,+
+NMR_TotalMass_2to4wks,body composition,,+
+Liver Wt,body composition,,
+BF_response_2to8wks,body composition,,+
+NMR_TotalMass_PercentGrowth_0to2wks,body composition,,+
+NMR Lean Mass 6 wks diet,body composition,+,+
+Food Intake AVG - 4 Wks Diet,body composition,,+
+NMR Fat Mass 6 wks diet,body composition,,+
+Lung Weight,body composition,,
+NMR Fat Mass 0 wks diet,body composition,,+
+Food Intake - Day 3,body composition,,+
+NMR Lean Mass 2 wks diet,body composition,+,+
+NMR_TotalMass_PercentGrowth_6to8wks,body composition,,+
+NMR_TotalMass_4to6wks,body composition,,+
+NMR_TotalMass_PercentGrowth_2to4wks,body composition,,+
+NMR_TotalMass_0to6wks,body composition,,+
+Retroperitoneal Fat Wt,body composition,,+
+NMR_TotalMass_4wks,body composition,,+
+Kidney Wt,body composition,,
+NMR Free Fluid (g) - 0 wks diet,body composition,,+
+Weight-8 wks diet,body composition,,+
+LV volume at end systole (day 14),heart,,+
+IVS at end systole (day 7),heart,,+
+Heart rate (day 21),heart,,+
+Mitral inflow E velocity (day 7),heart,,+
+LV mass (day 21),heart,,+
+IVS at end diastole (day 21),heart,,+
+Mitral inflow E to A velocity ratio (day 7),heart,,+
+Relative wall thickness at end diastole (day 14),heart,,+
+LVM corrected for growth (day 7),heart,,+
+LVID at end systole (day 21),heart,,+
+Aortic valve ejection time (day 21),heart,,+
+Mitral inflow A to E velocity ratio (day 14),heart,,+
+IVS to PW ratio at end systole (day 14),heart,,+
+LVM corrected for growth (day 21),heart,,+
+LV volume at end systole (day 21),heart,,+
+Ejection fraction (day 21),heart,,+
+Fractional shortening (day 14),heart,,+
+IVS to PW ratio at end diastole (day 14),heart,,+
+Mitral inflow A velocity (day 7),heart,,+
+Ejection fraction (day 14),heart,,+
+Velocity of circumferential shortening (day 21),heart,,+
+Mean normalized systolic ejection rate (day 21),heart,,+
+LVID at end diastole (day 14),heart,,+
+PW at end diastole (day 14),heart,,+
+right atrium mass/body weight,heart,,+
+total heart mass/body weight,heart,,+
+PW at end systole (day 14),heart,,+
+Velocity of circumferential shortening (day 14),heart,,+
+Heart rate (day 7),heart,,+
+LV volume at end diastole (day 14),heart,,+
+Aortic valve ejection time (day 7),heart,,+
+Mean normalized systolic ejection rate (day 7),heart,,+
+LVID at end diastole (day 7),heart,,+
+Heart rate (day 14),heart,,+
+IVS to PW ratio at end systole (day 7),heart,,+
+Relative wall thickness at end diastole (day 21),heart,,+
+IVS at end diastole (day 14),heart,,+
+LVM corrected for growth (day 0),heart,,+
+body weight (day 0),body composition,,+
+Aortic valve ejection time (day 14),heart,,+
+PW thickening (day 21),heart,,+
+Mitral inflow E velocity (day 14),heart,,+
+LV volume at end systole (day 7),heart,,+
+Relative wall thickness at end diastole (day 7),heart,,+
+right ventricle mass/body weight,heart,,+
+IVS to PW ratio at end diastole (day 7),heart,,+
+Mitral inflow A velocity (day 21),heart,,+
+Mitral inflow E to A velocity ratio (day 21),heart,,+
+Mitral inflow E velocity (day 21),heart,,+
+LV volume at end diastole (day 21),heart,,+
+Velocity of circumferential shortening (day 0),heart,,+
+Fractional shortening (day 0),heart,,+
+Ejection fraction (day 0),heart,,+
+IVS at end systole (day 21),heart,,+
+IVS to PW ratio at end systole (day 0),heart,,+
+PW at end systole (day 7),heart,,+
+IVS at end diastole (day 7),heart,,+
+PW at end diastole (day 7),heart,,+
+Mitral inflow A velocity (day 0),heart,,+
+Fractional shortening (day 7),heart,,+
+LVID at end systole (day 14),heart,,+
+IVS to PW ratio at end systole (day 21),heart,,+
+IVS at end systole (day 14),heart,,+
+Ejection fraction (day 7),heart,,+
+LV mass (day 14),heart,,+
+adrenal mass,heart,,
+Mitral inflow E to A velocity ratio (day 0),heart,,+
+Heart rate (day 0),heart,,+
+body weight (day 14),body composition,,+
+Mitral inflow A to E velocity ratio (day 21),heart,,+
+Mitral inflow E to A velocity ratio (day 14),heart,,+
+Aortic valve ejection time (day 0),heart,,+
+Mitral inflow A velocity (day 14),heart,,+
+Mitral inflow A to E velocity ratio (day 7),heart,,+
+LV mass (day 7),heart,,+
+PW thickening (day 14),heart,,+
+IVS to PW ratio at end diastole (day 21),heart,,+
+LVID at end diastole (day 0),heart,,+
+Relative wall thickness at end diastole (day 0),heart,,+
+LV volume at end systole (day 0),heart,,+
+Fractional shortening (day 21),heart,,+
+IVS to PW ratio at end diastole (day 0),heart,,+
+right atrium mass,heart,,+
+body weight (day 7),body composition,,+
+lung mass/body weight,heart,,
+LV mass (day 0),heart,,+
+body weight (day 21),heart,,+
+liver mass/body weight,heart,,+
+PW at end diastole (day 21),heart,,+
+LV volume at end diastole (day 7),heart,,+
+PW at end systole (day 21),heart,,+
+left atrium mass/body weight,heart,,+
+PW thickening (day 0),heart,,+
+PW thickening (day 7),heart,,+
+LVID at end diastole (day 21),heart,,+
+Velocity of circumferential shortening (day 7),heart,,+
+liver mass,heart,,+
+PW at end systole (day 0),heart,,+
+PW at end diastole (day 0),heart,,+
+LVM corrected for growth (day 14),heart,,+
+right ventricle mass,heart,,+
+IVS at end diastole (day 0),heart,,+
+IVS at end systole (day 0),heart,,+
+Mitral inflow E velocity (day 0),heart,,+
+Mean normalized systolic ejection rate (day 14),heart,,+
+LVID at end systole (day 7),heart,,+
+left ventricle mass,heart,,+
+lung mass,heart,,
+total heart mass,heart,,+
+Mean normalized systolic ejection rate (day 0),heart,,+
+LV volume at end diastole (day 0),heart,,+
+Mitral inflow A to E velocity ratio (day 0),heart,,+
+LVID at end systole (day 0),heart,,+
+left ventricle mass/body weight,heart,,+
+adrenal mass/body weight,heart,,+
+left atrium mass,heart,,+

@@ -10,7 +10,7 @@ Code repository for the manuscript:
 
 * Clone this repository to your local computer (`git clone https://github.com/JeffreyMolendijk/hmdp_skeletal_muscle.git`).
 * Install the R-packages as used in the individual scripts. 
-* Execute the code the file `workflow.Rmd`.
+* Execute the code in the file `workflow.Rmd`.
 * Inspect the output tables and images in `data/export/`.
 
 To locate the directories and scripts of interest, please refer to the folder structure below.
@@ -92,7 +92,7 @@ exercise_modalities
 
 ## Analysis outputs
 
-## `../data/export/images`
+### `../data/export/images`
 
 | filename | description                                    |
 | ---------| -------------                                  |
