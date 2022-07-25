@@ -2,7 +2,7 @@
 
 Code repository for the manuscript: 
 
-<cite>Proteome-wide systems genetics analysis identifies UFMylation as a regulator of muscle function.</cite>
+`Proteome-wide systems genetics analysis identifies UFMylation as a regulator of muscle function.`
 
 <br>
 
@@ -58,6 +58,7 @@ exercise_modalities
 │           phenomeasure2022.RDS
 │           pqtl_m_1.RDS
 │           pqtl_m_2.RDS
+│           pqtl_m_3.RDS
 │           traitdata2022.RDS
 │
 └───R
@@ -72,14 +73,18 @@ exercise_modalities
 
 ## Input data
 
-| filename                  | description                                                                                   |
-| -------------             | -------------                                                                                 |
-| human_phospho.xlsx        | human exercise phosphoproteomic data                                                          |
-| human_protein.txt         | human exercise proteomic data                                                                 |
-| human_trait.xlsx          | human plasma metabolites and muscle glycogen content                                          |
-| c18orf25_phospho.txt      | c18orf25 wild-type vs knockdown knockout with or without stimulation phosphoproteomic data    |
-| c18orf25_protein.txt      | c18orf25 knockdown wild-type vs knockout proteomics data                                      |
-| human_SPS_v2.RData        | object containing human phosphosites                                                          |
+| filename                                                      | description                                               |
+| -------------                                                 | -------------                                             |
+| 181117_Lumos_BenP_HMDP_Muscle_TMT_Proteins_mapped.txt         | HMDP proteomic data                                       |
+| AAV6_splashRNA_HMDP_pQTLs 25-2-2020_V2.xlsx                   | AAV design                                                |
+| gentype.RDS                                                   | HMDP gentype data                                         |
+| HMDP Traits List.xlsx                                         | HMDP trait information                                    |
+| male.mm10.chrom.sizes.tsv                                     | Mouse chromosome sizes                                    |
+| phenomeasure2022.RDS                                          | HMDP phenotype data                                       |
+| pqtl_m_1.RDS                                                  | HMDP pQTL data (part 1)                                   |
+| pqtl_m_2.RDS                                                  | HMDP pQTL data (part 2)                                   |
+| pqtl_m_3.RDS                                                  | HMDP pQTL data (part 3)                                   |
+| traitdata2022.RDS                                             | HMDP traitQTL data                                        |
 
 > Note: QTL data has been filtered to reduce the filesize
 
@@ -103,16 +108,12 @@ exercise_modalities
 
 > Note: The files in the `data/export/images` directory have a prefix describing the Figure they relate to. For example, F1C refers to Figure 1C, whereas SF1 refers to supplementary Figure 1. Further minor edits were made in Adobe Illustrator prior to collating the plots into figure panels.
 
-## `../data/export/tables`
-
-
-
 
 <br>
 
 ## Citation
 
-<cite>TO BE ADDED</cite>
+<cite>To be added.</cite>
 
 <br>
 
