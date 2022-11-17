@@ -51,23 +51,7 @@ phenomeasure <- readRDS(file = "../data/input/phenomeasure2022.RDS")
 
 ```{r read protein data}
 # Read the protein data
-prot_m <- read.delim(file = "../data/input/181117_Lumos_BenP_HMDP_Muscle_TMT_Proteins_mapped.txt") %>% 
-  filter(Master == "IsMasterProtein") %>% 
-  dplyr::select(Accession, Gene.Name, BXD21.TyJ_167:NZB.BINJ_74)
-
-# Keep proteins measured in at least 50 mice
-prot_m <-prot_m[(is.na(prot_m) %>% apply(., 1, sum)) < (ncol(prot_m) -52), ]
-
-# Save list of protein-gene names for mapping purposes
-proteinlist <- prot_m %>% dplyr::select(Accession, Gene.Name) %>% distinct()
-
-# Convert protein data to matrix, and pre-process
-prot_m <- prot_m %>% 
-  dplyr::select(-Accession, -Gene.Name) %>% as.matrix() %>% 
-  limma::normalizeQuantiles(.) %>% t %>% `colnames<-`(prot_m$Accession) %>% 
-  `rownames<-`(colnames(prot_m %>% dplyr::select(-Accession, -Gene.Name)))
-
-prot_m[is.na(prot_m)] <- 0
+prot_m <- readRDS(file = '../data/input/prot_m.RDS')
 ```
 
 

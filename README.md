@@ -50,7 +50,7 @@ exercise_modalities
 │   ├───export
 │   │   └───images
 │   └───input
-│           181117_Lumos_BenP_HMDP_Muscle_TMT_Proteins_mapped.txt
+│           prot_m.RDS
 │           AAV6_splashRNA_HMDP_pQTLs 25-2-2020_V2.xlsx
 │           gentype.RDS
 │           HMDP Traits List.xlsx
@@ -75,7 +75,7 @@ exercise_modalities
 
 | filename                                                      | description                                               |
 | -------------                                                 | -------------                                             |
-| 181117_Lumos_BenP_HMDP_Muscle_TMT_Proteins_mapped.txt         | HMDP proteomic data                                       |
+| prot_m.RDS                                                    | HMDP proteomic data                                       |
 | AAV6_splashRNA_HMDP_pQTLs 25-2-2020_V2.xlsx                   | AAV design                                                |
 | gentype.RDS                                                   | HMDP gentype data                                         |
 | HMDP Traits List.xlsx                                         | HMDP trait information                                    |
