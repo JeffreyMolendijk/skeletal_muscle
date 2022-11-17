@@ -51,6 +51,7 @@ exercise_modalities
 │   │   └───images
 │   └───input
 │           prot_m.RDS
+|           proteinlist.RDS
 │           AAV6_splashRNA_HMDP_pQTLs 25-2-2020_V2.xlsx
 │           gentype.RDS
 │           HMDP Traits List.xlsx
@@ -76,6 +77,7 @@ exercise_modalities
 | filename                                                      | description                                               |
 | -------------                                                 | -------------                                             |
 | prot_m.RDS                                                    | HMDP proteomic data                                       |
+| proteinlist.RDS                                               | Protein identifiers                                       |
 | AAV6_splashRNA_HMDP_pQTLs 25-2-2020_V2.xlsx                   | AAV design                                                |
 | gentype.RDS                                                   | HMDP gentype data                                         |
 | HMDP Traits List.xlsx                                         | HMDP trait information                                    |

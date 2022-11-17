@@ -52,6 +52,7 @@ phenomeasure <- readRDS(file = "../data/input/phenomeasure2022.RDS")
 ```{r read protein data}
 # Read the protein data
 prot_m <- readRDS(file = '../data/input/prot_m.RDS')
+proteinlist <- readRDS(file = '../data/input/proteinlist.RDS')
 ```
 
 
