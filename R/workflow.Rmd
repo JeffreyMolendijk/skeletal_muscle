@@ -576,10 +576,10 @@ manhattan_table <- data.frame(trait = c("total cholesterol_pmid20054062",
                                         "nmr lean mass 4 wks diet_pmid25651185", 
                                         "nmr lean mass 4 wks diet_pmid25651185", 
                                         "nmr lean mass 4 wks diet_pmid25651185"), 
-                              protein = c("ociad2", 
-                                          "tacc2", 
-                                          "mocs2", 
-                                          "inmt"), 
+                              protein = c("Q9D8W7", 
+                                          "A0A140LHH8", 
+                                          "A0A0R4J206", 
+                                          "P40936"), 
                               plot = c("F", 
                                        "N", 
                                        "M", 
@@ -588,7 +588,7 @@ manhattan_table <- data.frame(trait = c("total cholesterol_pmid20054062",
 for(i in 1:nrow(manhattan_table)){
   print(paste0("running row: ", i))
   
-  scatterdata <- cor %>% filter(p1 == (proteinlist %>% filter(tolower(Gene.Name) == tolower(manhattan_table$protein[i])) %>% dplyr::select(Accession) %>% unlist %>% unname) & tolower(p2) == tolower(manhattan_table$trait[i]))
+  scatterdata <- cor %>% filter(p1 == manhattan_table$protein[i] & tolower(p2) == tolower(manhattan_table$trait[i]))
 
 p3 <- cbind(
   prot_m_summarized %>%dplyr::select(scatterdata[1, "p1"] %>% unlist %>% as.character()),
@@ -601,6 +601,7 @@ dev.off()
 
 }
 ```
+
 
 
 ### Figure S3
