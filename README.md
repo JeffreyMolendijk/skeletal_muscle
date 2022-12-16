@@ -1,8 +1,6 @@
 ## Introduction
 
-Code repository for the manuscript: 
-
-`Proteome-wide systems genetics analysis identifies UFMylation as a regulator of muscle function.`
+Code repository for the manuscript: <a href='https://doi.org/10.7554/eLife.82951' target='_blank'>Proteome-wide systems genetics analysis identifies UFMylation as a regulator of skeletal muscle function.</a>
 
 <br>
 
