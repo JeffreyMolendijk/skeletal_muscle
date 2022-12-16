@@ -115,7 +115,7 @@ exercise_modalities
 
 ## Citation
 
-<cite>To be added.</cite>
+<cite>Molendijk, J., Blazev, R., Mills, R. J., Ng, Y. K., Watt, K. I., Chau, D., Gregorevic, P., Crouch, P. J., Hilton, J. B. W., Lisowski, L., Zhang, P., Reue, K., Lusis, A. J., Hudson, J., James, D. E., Seldin, M. M., & Parker, B. L. (2022). Proteome-wide systems genetics identifies UFMylation as a regulator of skeletal muscle function. eLife, 11, e82951. Advance online publication. https://doi.org/10.7554/eLife.82951</cite>
 
 <br>
 
